@@ -2,10 +2,55 @@
 //
 
 #include <iostream>
+#include <stdlib.h>
+
+//Doing linked list so that we can run through references and make the vertical output easier
+struct Node {
+    int reference; // reference from txt file
+    int* memory;     //array that will hold the nodes references stored in memory
+    bool pageFault; // this will tell us whether the row should remain blank when outputting
+    Node* next;     // points to the next node in the linked list
+
+    Node(int ref, int memorySize) {
+        reference = ref;
+        memory = new int[memorySize];
+        pageFault = false;
+        next = nullptr;
+
+        for (int i= 0; i < memorySize; i++) {
+            memory[i] = -1;
+        }
+    }
+};
+
+
+
+void FIFO(int memorySize, Node* currNode) {
+    int pageFaults = 0;
+    int firstIn = 0;
+    Node* headNode = currNode;
+
+
+    while (currNode != nullptr) {
+        for (int i = 0; i < memorySize; i++) {
+            if (currNode->memory[i] == currNode->reference) {
+                pageFaults++;
+                break;
+            }
+
+            else if ()
+        }
+    }
+
+    
+
+}
 
 int main()
 {
     std::cout << "Hello World!\n";
+
+
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu
