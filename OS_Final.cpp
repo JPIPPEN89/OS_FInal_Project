@@ -5,6 +5,7 @@
 #include <fstream>
 #include <string>
 #include <iomanip>
+
 // Doing OPT and FIFO, make sure OPT.txt and FIFO.txt are both in the project folder.
 // 
 //Doing linked list so that we can run through references and make the vertical output easier
@@ -20,7 +21,7 @@ struct Node {
         pageFault = false;
         next = nullptr;
 
-        for (int i= 0; i < memorySize; i++) {
+        for (int i = 0; i < memorySize; i++) {
             memory[i] = -1;
         }
     }
@@ -28,24 +29,31 @@ struct Node {
 
 
 
+
+// -FIFO-
+// FIFO replaces the page that has been in memory the longest.
+// firstIn keeps track of the next frame to replace, allowing
+// us to implement FIFO without using a queue.
+
 void FIFO(int memorySize, Node* currNode) {
     int pageFaults = 0;
     int firstIn = 0;
 
     Node* prevNode = nullptr;
 
-    // Loop through every reference
     while (currNode != nullptr) {
         bool found = false;
 
-        // Copy memory from the previous node
+        // Carry over the memory contents from the previous reference
+        // so that memory does not reset with each new node.
         if (prevNode != nullptr) {
             for (int i = 0; i < memorySize; i++) {
                 currNode->memory[i] = prevNode->memory[i];
             }
         }
 
-        // Check if the reference is already in memory
+        // Search memory to determine if the requested page
+        // is already loaded.
         for (int i = 0; i < memorySize; i++) {
             if (currNode->memory[i] == currNode->reference) {
                 found = true;
@@ -53,33 +61,37 @@ void FIFO(int memorySize, Node* currNode) {
             }
         }
 
-        // If the reference is not found, a page fault occurs
+        // If the page is not found, count a page fault and
+        // insert the requested page into the next FIFO frame.
         if (!found) {
             pageFaults++;
             currNode->pageFault = true;
 
-            // Insert the reference into the selected frame
             currNode->memory[firstIn] = currNode->reference;
 
-            // Cycle to the next memory frame
+            // Modulo returns firstIn to 0 after reaching
+            // the end of the memory array.
             firstIn = (firstIn + 1) % memorySize;
         }
 
-        // Save the current node
+        // Save the current memory state and move to the next reference.
         prevNode = currNode;
-
-        // Move to the next node
         currNode = currNode->next;
     }
 
-    // Display total page faults
     std::cout << "Total Page Faults: " << pageFaults << "\n\n";
 }
+
+
+//  -DISPLAY MEMORY-
+// Displays the memory states stored in the linked list.
+// References are displayed horizontally and memory frames vertically.
+// If no page fault occurred, the corresponding column is left blank.
 
 void displayMemory(int memorySize, Node* headNode) {
     Node* currNode = headNode;
 
-    // Display the reference string
+    // Display the reference string using setw to align the columns.
     while (currNode != nullptr) {
         std::cout << std::setw(4) << currNode->reference;
         currNode = currNode->next;
@@ -87,10 +99,9 @@ void displayMemory(int memorySize, Node* headNode) {
 
     std::cout << "\n";
 
-    // Reset to the beginning of the linked list
+    // Return to the beginning of the list to display the separator.
     currNode = headNode;
 
-    // Display the separator
     while (currNode != nullptr) {
         std::cout << "----";
         currNode = currNode->next;
@@ -98,16 +109,15 @@ void displayMemory(int memorySize, Node* headNode) {
 
     std::cout << "\n";
 
-    // Loop through each memory frame
+    // The outer loop handles each memory frame, while the inner
+    // loop displays that frame's contents across all references.
     for (int i = 0; i < memorySize; i++) {
 
-        // Start at the beginning of the linked list
         currNode = headNode;
 
-        // Loop through every reference
         while (currNode != nullptr) {
 
-            // Display memory if a page fault occurred
+            // Only display occupied frames when a page fault occurs.
             if (currNode->pageFault &&
                 currNode->memory[i] != -1) {
 
@@ -115,12 +125,10 @@ void displayMemory(int memorySize, Node* headNode) {
                     << currNode->memory[i];
             }
 
-            // Leave the column blank if no page fault occurred
             else {
                 std::cout << std::setw(4) << " ";
             }
 
-            // Move to the next node
             currNode = currNode->next;
         }
 
@@ -129,20 +137,12 @@ void displayMemory(int memorySize, Node* headNode) {
 }
 
 
-
+//  -MAIN-
+// Reads the input file, builds the linked list, and determines
+// which page replacement algorithm to run. After displaying
+// the results, all dynamically allocated memory is released.
 
 int main()
-
-// Run program: Ctrl + F5 or Debug > Start Without Debugging menu
-// Debug program: F5 or Debug > Start Debugging menu
-
-// Tips for Getting Started: 
-//   1. Use the Solution Explorer window to add/manage files
-//   2. Use the Team Explorer window to connect to source control
-//   3. Use the Output window to see build output and other messages
-//   4. Use the Error List window to view errors
-//   5. Go to Project > Add New Item to create new code files, or Project > Add Existing Item to add existing code files to the project
-//   6. In the future, to open this project again, go to File > Open > Project and select the .sln file
 {
     std::string fileName;
     std::string value;
@@ -150,65 +150,60 @@ int main()
     char algorithm;
     int memorySize;
 
+    // headNode keeps track of the beginning of the list,
+    // while tailNode makes adding new nodes easier.
     Node* headNode = nullptr;
     Node* tailNode = nullptr;
 
-    // Ask the user for the file name
     std::cout << "Enter file name: ";
     std::getline(std::cin, fileName);
 
-    // Open the text file
     std::ifstream inputFile(fileName);
 
-    // Check if the file opened successfully
+    // Make sure the file can be opened before reading it.
     if (!inputFile.is_open()) {
         std::cout << "Error: Unable to open file.\n";
         return 1;
     }
 
-    // Read the algorithm character
+    // Read the comma-separated values from the file.
+    // The first value is the algorithm and the second is the frame count.
     std::getline(inputFile, value, ',');
     algorithm = value[0];
 
-    // Read the number of memory frames
     std::getline(inputFile, value, ',');
     memorySize = std::stoi(value);
 
-    // Check if the number of frames is valid
     if (memorySize <= 0) {
         std::cout << "Invalid memory size.\n";
         return 1;
     }
 
-    // Read the remaining references
+    // Create a node for each remaining reference in the file.
+    // Nodes are added to the end of the list to preserve their order.
     while (std::getline(inputFile, value, ',')) {
 
-        // Convert the reference to an integer
         int reference = std::stoi(value);
 
-        // Create a new node for the reference
         Node* newNode = new Node(reference, memorySize);
 
-        // If the linked list is empty
+        // If this is the first node, it becomes both the head and tail.
         if (headNode == nullptr) {
             headNode = newNode;
             tailNode = newNode;
         }
 
-        // Otherwise, add the node to the end
         else {
             tailNode->next = newNode;
             tailNode = newNode;
         }
     }
 
-    // Close the input file
     inputFile.close();
 
-    // Display the number of memory frames
     std::cout << "\nMemory Frames: " << memorySize << "\n";
 
-    // Run FIFO if the algorithm character is F
+    // Run the algorithm specified by the first character in the file.
     if (algorithm == 'F') {
         std::cout << "Algorithm: FIFO\n\n";
 
@@ -216,27 +211,24 @@ int main()
         displayMemory(memorySize, headNode);
     }
 
-    // Display an error for unsupported algorithms
+    // OPT will be added here later.
+
     else {
         std::cout << "Unsupported algorithm.\n";
     }
 
-    // Start at the beginning of the linked list
+    // Delete each node and its memory array to prevent memory leaks.
     Node* currNode = headNode;
 
-    // Delete dynamically allocated memory
     while (currNode != nullptr) {
 
-        // Save the address of the next node
+        // Save the next node before deleting the current one
+        // so that we do not lose access to the rest of the list.
         Node* nextNode = currNode->next;
 
-        // Delete the memory array
         delete[] currNode->memory;
-
-        // Delete the current node
         delete currNode;
 
-        // Move to the next node
         currNode = nextNode;
     }
 
